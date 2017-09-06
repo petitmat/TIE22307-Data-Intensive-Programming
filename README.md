@@ -5,7 +5,7 @@
 The course deals with managing and analysing big data. After the course, a student understands modern solutions for data-intensive programming, she knows their intentions and she has introduced herself to programming in the field.
 
 
-###Weekly exercices
+### Weekly exercices
 
 Here are the weekly exercises 2017
 
