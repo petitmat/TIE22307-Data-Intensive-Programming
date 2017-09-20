@@ -22,14 +22,14 @@ object Main extends App {
   
   
   // Task #1: transform the tupleRdd to a pair RDD, where key is the home team and value is the audience. 
-  val audienceByTeam: RDD[(String, Int)] = ???
+  val audienceByTeam: RDD[(String, Int)] = tupleRdd.map(x => (x._2, x._6.toInt))
   
   // Task #2: Compute the overall audience of the home games for each team
-  val totalAudience = ???
+  val totalAudience = audienceByTeam.groupByKey()
   totalAudience.collect.foreach(println)
   
   // Task #3: Compute the average audience of the home games for each team:
-  val averageAudience = ???
+  val averageAudience = totalAudience.map(x => (x._1,x._2.sum/x._2.size)).sortBy(x => x._2,ascending = false)
   averageAudience.collect.foreach(println)
   
   
@@ -40,7 +40,7 @@ object Main extends App {
   val premierLeagueStadiumsRaw = sc.textFile("src/main/resources/football/premierLeagueStadiums.csv")
   val premierLeagueClubsRaw = sc.textFile("src/main/resources/football/premierLeagueClubsWithStadiums.csv")
   
-  val j = ???
+  val j = premierLeagueStadiumsRaw.map(l => {val a = l.split(","); (a(0), a(1))}).join(premierLeagueClubsRaw.map(l => {val a = l.split(","); (a(1), a(0))})).map(x => (x._2._1,x._2._2))
   j.collect.foreach(println)
   
   // Task #5: File premierLeagueClubs.csv contains the list of current Premier League clubs and the file finns has the list of the
@@ -48,16 +48,16 @@ object Main extends App {
   // Use the two RDDs to compute a pair RDD, whose keys are the current club names and the values are the number of Finnish players played in the club.
   val premierLeagueClubsRaw2 = sc.textFile("src/main/resources/football/premierLeagueClubs.csv")
   val finnsRaw = sc.textFile("src/main/resources/football/finns.csv")
-  val finnsInClubs = ???
+  val finnsInClubs = finnsRaw.map(l => {val a = l.split(","); (a(1), a(0))}).groupByKey().map(x => (x._1,x._2.size)).sortBy(x => x._2,ascending = false)
   finnsInClubs.collect.foreach(println)
   
   
   // Bonus task #1: In football the winning team get three points and loosing one gets 0 points. In case of a draw match both teams get one point.
   // Transform tupleRdd to pair RDD of (team, points) for the matches:
-  val pointsPerMatch: RDD[(String, Int)] = ???
-
+  val pointsPerMatch: RDD[(String, Int)] = tupleRdd.flatMap(x => {if (x._4.toInt > x._5.toInt) List((x._2,3),(x._3,0)) else if (x._4.toInt < x._5.toInt) List((x._2,0),(x._3,3)) else List((x._2,1),(x._3,1))})
+  pointsPerMatch.collect.foreach(println)
   // Bonus task #2: Compute the overall points for each team
-  val table: RDD[(String, Int)] = ???
+  val table: RDD[(String, Int)] = pointsPerMatch.groupByKey().map(x => (x._1,x._2.sum)).sortBy(x => x._2,ascending = false)
   table.collect.foreach(println)
                                           
 }
