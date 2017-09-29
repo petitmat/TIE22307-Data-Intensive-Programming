@@ -5,6 +5,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 
+import scala.collection.TraversableOnce
+
 object ex4 extends App {
   val conf = new SparkConf().setMaster("local").setAppName("ex3")
   conf.set("spark.driver.host", "localhost");
@@ -40,13 +42,17 @@ object ex4 extends App {
   
   // Task #1: Compute simplified page rank to pages
   // Initialize each page's rank to 0.25
-  var ranks = ???
+  var ranks: RDD[(String, Double)] = pages.mapValues(v => 0.25)
 
   // Run 10 iterations of PageRank
-  ???
+  for (i <- 0 until 10){
+    val contributions: RDD[(String, Double)] = pages.join(ranks).flatMap(x => List((x._1, x._2._2/x._2._1.size)))
+
+    ranks = contributions.reduceByKey((x, y) => x + y).mapValues(v => 0.15/numPages + 0.85 * v)
+  }
 
   // Print the ranks to stdout
-  ranks.???
+  ranks.collect.foreach(println)
 
 
   // Task #2: Would your solution benefit from caching the data? If yes, how?
@@ -86,12 +92,12 @@ object ex4 extends App {
   val index = rawData.mapValues(_.filterNot(c => c == ',' || c == '.').toLowerCase().split(" "))
   index.collect.foreach(v => {print(v._1 + ": ["); v._2.foreach(s => print(s + ", ")); println("]")})    
                                                             
-  val invertedIndex: Map[String, Iterable[(Int, Int)]] = ???
+  val invertedIndex: Map[String, Iterable[(Int, Int)]] = index.flatMap(x => x._2.groupBy(identity).mapValues(_.length).toSeq.map(y => (y._1, (x._1,y._2)))).groupByKey().collect.toMap
 
-                                                                                                                  
-  // Let's try searching with the inverted index:
+  invertedIndex.foreach(println)
+  // Let's try searching with the inverted index
   twoWordSearch("drink", "pink", invertedIndex, (v1, v2) => v1*v2)
-  twoWordSearch("he", "to", invertedIndex, (v1, v2) => v1*v2)  
+  twoWordSearch("he", "to", invertedIndex, (v1, v2) => v1*v2)
 
   // w1 and w2 are search words, invertedIndex is the index, score is the scoring function.
   // Scoring function takes two integers (frequencies of both words in the invertedIndex case) and
@@ -114,7 +120,7 @@ object ex4 extends App {
     }
   
   }
-  
+
   // Inverted index cannot be used for searching phrases liken "ink wink". Proximity index is used for the task.
   // The idea in the proximity index is to embed position information of each word in the document into the inverted lists.
   // For our example documents the proximity index is 
@@ -130,12 +136,13 @@ object ex4 extends App {
   // Hint: 
   var arr = Array("One", "Two", "Three")
   val voila = arr.zipWithIndex.map{ case (s,i) => (s,i) }
+
+  val proximityIndex = index.flatMap(x => x._2.zipWithIndex.map(y => (y._1,(x._1,y._2)))).groupByKey().collect.toMap
   
-  val proximityIndex = index.???
-  
+  proximityIndex.foreach(println)
 
   // Task #5: Use the twoWordSearch for phrases.
-  twoWordSearch("drink", "pink", ???)
-  twoWordSearch("likes", "to", ???)
-  
+  twoWordSearch("drink", "pink", proximityIndex, (v1, v2) => v2-v1)
+  twoWordSearch("likes", "to", proximityIndex, (v1, v2) => v2-v1)
+
 }
