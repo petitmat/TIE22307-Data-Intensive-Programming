@@ -138,11 +138,11 @@ object ex4 extends App {
   val voila = arr.zipWithIndex.map{ case (s,i) => (s,i) }
 
   val proximityIndex = index.flatMap(x => x._2.zipWithIndex.map(y => (y._1,(x._1,y._2)))).groupByKey().collect.toMap
-  
+
   proximityIndex.foreach(println)
 
   // Task #5: Use the twoWordSearch for phrases.
-  twoWordSearch("drink", "pink", proximityIndex, (v1, v2) => v2-v1)
-  twoWordSearch("likes", "to", proximityIndex, (v1, v2) => v2-v1)
+  twoWordSearch("drink", "pink", proximityIndex, (v1, v2) => if(v2-v1 == 1) 1 else 0)
+  twoWordSearch("likes", "to", proximityIndex, (v1, v2) => if(v2-v1 == 1) 1 else 0)
 
 }
