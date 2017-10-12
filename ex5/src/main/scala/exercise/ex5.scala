@@ -7,7 +7,7 @@ case class Customer(custId: Int, name: String, streetAddr: String, postOffic: St
 
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
-
+import org.apache.spark.sql.functions._
 
 object ex5 extends App{
   // Suppress the log messages:
@@ -29,23 +29,22 @@ object ex5 extends App{
   // The directory src/main/resources/sport contains training files in jsonl format.
 	
   // Task #1: Read the files as a DataFrame:
-  val trainingDf = spark.???
+  val trainingDf = spark.read.json("src/main/resources/sport/training1.jsonl","src/main/resources/sport/training2.jsonl","src/main/resources/sport/training3.jsonl")
   println("trainingDf")
   trainingDf.show
-  
+
   // Task #2: What is the schema of trainingDf
   println("Schema of trainingDf")
-  trainingDf.???
+  trainingDf.toDF("averageHR","comment","length", "maxHR","sportType","userId")
 
-  
   // Task #3: Select only the lines which are related to running from trainingDf.
-  val onlyRunning = trainingDf.???
+  val onlyRunning = trainingDf.where("sportType = 'running'")
   println("onlyRunning")
   onlyRunning.show
-  
-  
+
+
   // Task #4: Group the data in trainingDf by the sport type and compute the maximum of maxHR for each sport.
-  val maxHR = trainingDf.???
+  val maxHR = trainingDf.groupBy("sportType").max("maxHR")
   println("maxHR")
   maxHR.show
   
@@ -74,36 +73,36 @@ object ex5 extends App{
   // DataFrame logDf has this information:
   val logDf = spark.sparkContext.parallelize(List((123, 5203), (123, 4103), (456, 3456))).toDF("custId", "amount")
   logDf.show
-  
-  
-  
+
+
+
   // The customer data of the company is in DataFrame of Customers (The class Customer is defined on the top of this file).
   val customerRdd = spark.sparkContext.parallelize(List(Customer(123, "Theresa", "10 Downing Street", "London"),
-			                                Customer(456, "Harry", "4 Privet Drive", "Little Whinging"), 
-			                                Customer(789, "Sherlock", "221B Baker Street", "London")))                                              
+			                                Customer(456, "Harry", "4 Privet Drive", "Little Whinging"),
+			                                Customer(789, "Sherlock", "221B Baker Street", "London")))
   val customerDf = customerRdd.toDF
 
-  
+
   // Task #5: Join logRdd and customerRdd using the customer id as the join condition.
   // See 'join(right: Dataset[_], joinExprs: Column)' on page https://spark.apache.org/docs/2.1.1/api/scala/index.html#org.apache.spark.sql.Dataset
   // Hint: You can refer to column custId in logDf like this: logDf("custId")
-  val billingDf = logDf.???
+  val billingDf = logDf.join(customerDf, logDf("custId") === customerDf("custId"))
   println("billingDf")
   billingDf.show
-  
-  
+
+
   // Task #6: Calculate the total amount of downloaded data for each customer
-  val totalDf = billingDf.???
+  val totalDf = billingDf.groupBy(customerDf.col("custId")).agg(sum("amount"))
   println("totalDf")
   totalDf.show
-  
-  
+
+
   // Bonus Task #1: Use outer join to find the customers who a have not downloaded any data
-  val passiveCustomersDf = logDf.???
+  val passiveCustomersDf = logDf.join(customerDf,logDf("custId") === customerDf("custId"),"outer").where(logDf.col("custId").isNull)
   println("passiveCustomersDf")
   passiveCustomersDf.show
-  
-  
+
+
   // Bonus Task #2: In the Task #5 you were given logDf DataFrame. In reality logDf is created from Apache log lines - see RDD rawLog below.
   // Transform the rawLog to DataFrame logDf2 so that it has the same schema and content as logDf.
   val rawLog = spark.sparkContext.parallelize(List("130.230.4.2 - - [07/Mar/2016:16:20:55 -0800] 'GET /api/customer/123/data/abc HTTP/1.1' 200 5203",
@@ -111,7 +110,8 @@ object ex5 extends App{
                                                    "130.230.4.2 - - [07/Mar/2016:16:20:55 -0800] 'GET /api/customer/456/data/def HTTP/1.1' 200 3456",
                                                    "54.209.46.155 - - [07/Mar/2016:16:49:57 -0800] 'POST /api/customer/123/data HTTP/1.1' 200 30"))
 
-  val logRdd: RDD[(String, Int)] = rawLog.???
+
+  val logRdd: RDD[(String, Int)] = rawLog.map(p => ("""(?<=customer\/)[0-9]*""".r.findFirstIn(p).getOrElse("000").toString,"""[0-9]{1,4}$""".r.findFirstIn(p).getOrElse("0").toInt))
   val logDf2 = logRdd.toDF("custId", "amount")
   println("logDf2")
   logDf2.show
